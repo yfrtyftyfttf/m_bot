@@ -3,9 +3,9 @@ import os
 
 app = Flask(__name__)
 
-# بيانات تجريبية (بعدها نربطها بالبوت)
-USER = "admin"
-PASSWORD = "1234"
+# بيانات تسجيل الدخول (اختبار)
+USER = "m"
+PASSWORD = "m"
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -13,15 +13,17 @@ def home():
         username = request.form.get("username")
         password = request.form.get("password")
 
+        print(username, password)  # للمراجعة في اللوق
+
         if username == USER and password == PASSWORD:
-            return redirect(url_for("dashboard"))
+            return redirect("/dashboard")
         else:
-            return render_template("index.html", error="❌ بيانات الدخول غير صحيحة")
+            return render_template("index.html", error="❌ خطأ في اسم المستخدم أو كلمة المرور")
 
     return render_template("index.html")
 
 
-@app.route("/dashboard")
+@app.route("/dashboard", methods=["GET"])
 def dashboard():
     return "<h1>✅ تم تسجيل الدخول بنجاح</h1>"
 
