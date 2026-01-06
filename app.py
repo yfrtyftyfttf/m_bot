@@ -1,203 +1,136 @@
-from flask import Flask, render_template, request, redirect, session
-from flask_cors import CORS
-import telebot
-from telebot import types
+from flask import Flask, render_template, redirect, url_for, request, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import uuid
 
-# ===== الإعدادات =====
-TOKEN = "7465926974:AAHzPv067I1ser4kExbRt5Hzj9R3Ma5Xjik"
-ADMIN_ID = "6695916631"
-ADMIN_PIN = "123456"
-
-SERVICE_PRICES = {
-    "Followers": 3,
-    "Likes": 1,
-    "Views": 3,
-    "Comments": 3
-}
-
-bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
-app.secret_key = "secret123"
-CORS(app)
+app.secret_key = "SECRET_KEY_123"
 
-users = {}
-orders = {}
-admin_unlocked = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+db = SQLAlchemy(app)
 
-# ===== الموقع =====
+login_manager = LoginManager(app)
+login_manager.login_view = "login"
 
-@app.route("/", methods=["GET", "POST"])
-def index():
+
+# ===================== MODELS =====================
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(100))
+    balance = db.Column(db.Float, default=0.0)
+
+
+class Order(db.Model):
+    id = db.Column(db.String(50), primary_key=True)
+    user_id = db.Column(db.Integer)
+    service = db.Column(db.String(100))
+    quantity = db.Column(db.Integer)
+    price = db.Column(db.Float)
+    status = db.Column(db.String(50), default="قيد التنفيذ")
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+# ===================== ROUTES =====================
+
+@app.route("/", methods=["GET"])
+def home():
+    return redirect(url_for("login"))
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
     if request.method == "POST":
-        u = request.form["username"]
-        p = request.form["password"]
+        user = User(
+            username=request.form["username"],
+            password=request.form["password"]
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash("تم إنشاء الحساب بنجاح")
+        return redirect(url_for("login"))
+    return render_template("register.html")
 
-        if u not in users:
-            users[u] = {"password": p, "balance": 0, "orders": []}
 
-        if users[u]["password"] == p:
-            session["user"] = u
-            return redirect("/dashboard")
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        user = User.query.filter_by(
+            username=request.form["username"],
+            password=request.form["password"]
+        ).first()
 
-    return render_template("index.html")
+        if user:
+            login_user(user)
+            return redirect(url_for("dashboard"))
+        else:
+            flash("بيانات الدخول غير صحيحة")
+
+    return render_template("login.html")
 
 
 @app.route("/dashboard")
+@login_required
 def dashboard():
-    if "user" not in session:
-        return redirect("/")
-    return render_template(
-        "dashboard.html",
-        user=session["user"],
-        balance=users[session["user"]]["balance"]
-    )
+    return render_template("dashboard.html")
 
 
-@app.route("/services")
-def services():
-    if "user" not in session:
-        return redirect("/")
-    return render_template("services.html")
-
-
-@app.route("/create_order", methods=["POST"])
-def create_order():
-    if "user" not in session:
-        return redirect("/")
-
-    service = request.form["service"]
-    qty = int(request.form["qty"])
-    link = request.form["link"]
-
-    price = SERVICE_PRICES.get(service, 3)
-    cost = round((qty / 1000) * price, 2)
-
-    user = session["user"]
-    if users[user]["balance"] < cost:
-        return "رصيد غير كافي"
-
-    users[user]["balance"] -= cost
-    order_id = str(uuid.uuid4())[:8]
-
-    orders[order_id] = {
-        "user": user,
-        "service": service,
-        "qty": qty,
-        "link": link,
-        "cost": cost,
-        "status": "pending"
-    }
-
-    users[user]["orders"].append(order_id)
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("🔄 قيد التنفيذ", callback_data=f"ord_proc_{order_id}"),
-        types.InlineKeyboardButton("✅ تم التنفيذ", callback_data=f"ord_done_{order_id}")
-    )
-
-    bot.send_message(
-        ADMIN_ID,
-        f"🚀 طلب جديد\n"
-        f"🆔 {order_id}\n"
-        f"👤 {user}\n"
-        f"📦 {service}\n"
-        f"🔢 {qty}\n"
-        f"💰 {cost}$\n"
-        f"🔗 {link}",
-        reply_markup=markup
-    )
-
-    return redirect("/dashboard")
-
-
-@app.route("/support", methods=["GET", "POST"])
-def support():
+@app.route("/new_order", methods=["GET", "POST"])
+@login_required
+def new_order():
     if request.method == "POST":
-        bot.send_message(
-            ADMIN_ID,
-            f"🆘 دعم فني\n"
-            f"👤 {request.form['username']}\n"
-            f"🆔 {request.form['order_id']}\n"
-            f"{request.form['message']}"
+        service = request.form["service"]
+        quantity = int(request.form["quantity"])
+
+        price = 0
+        if service == "followers":
+            price = (quantity / 1000) * 3
+        if service == "likes":
+            price = (quantity / 1000) * 1
+
+        if current_user.balance < price:
+            flash("رصيدك غير كافي")
+            return redirect(url_for("new_order"))
+
+        current_user.balance -= price
+
+        order = Order(
+            id=str(uuid.uuid4())[:8],
+            user_id=current_user.id,
+            service=service,
+            quantity=quantity,
+            price=price
         )
-        return redirect("/dashboard")
 
-    return render_template("support.html")
+        db.session.add(order)
+        db.session.commit()
 
+        flash("تم إرسال الطلب بنجاح")
+        return redirect(url_for("orders"))
 
-# ===== البوت =====
-
-@bot.message_handler(commands=["start"])
-def start_bot(message):
-    if str(message.from_user.id) != ADMIN_ID:
-        return
-    bot.send_message(message.chat.id, "🔐 أرسل رمز الدخول")
-    bot.register_next_step_handler(message, check_pin)
+    return render_template("new_order.html")
 
 
-def check_pin(message):
-    global admin_unlocked
-    if message.text == ADMIN_PIN:
-        admin_unlocked = True
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("👑 لوحة الأدمن", "🔒 قفل")
-        bot.send_message(message.chat.id, "✅ تم الفتح", reply_markup=markup)
-    else:
-        bot.send_message(message.chat.id, "❌ رمز خطأ")
+@app.route("/orders")
+@login_required
+def orders():
+    user_orders = Order.query.filter_by(user_id=current_user.id).all()
+    return render_template("orders.html", orders=user_orders)
 
 
-@bot.message_handler(func=lambda m: m.text == "👑 لوحة الأدمن")
-def admin_panel(message):
-    if not admin_unlocked:
-        return
-    bot.send_message(message.chat.id, "🆔 أرسل رقم الطلب:")
-    bot.register_next_step_handler(message, get_order)
-
-
-def get_order(message):
-    oid = message.text
-    if oid not in orders:
-        bot.send_message(message.chat.id, "❌ غير موجود")
-        return
-
-    o = orders[oid]
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("❌ إلغاء", callback_data=f"cancel_{oid}"),
-        types.InlineKeyboardButton("💰 إعادة رصيد", callback_data=f"refund_{oid}"),
-        types.InlineKeyboardButton("✅ تم", callback_data=f"done_{oid}")
-    )
-
-    bot.send_message(
-        message.chat.id,
-        f"🆔 {oid}\n📦 {o['service']}\n🔢 {o['qty']}\n💰 {o['cost']}$\n🔄 {o['status']}",
-        reply_markup=markup
-    )
-
-
-@bot.callback_query_handler(func=lambda c: True)
-def actions(call):
-    if not admin_unlocked:
-        return
-
-    action, oid = call.data.split("_")
-    o = orders[oid]
-    user = o["user"]
-
-    if action == "cancel":
-        o["status"] = "cancelled"
-    elif action == "refund":
-        users[user]["balance"] += o["cost"]
-        o["status"] = "refunded"
-    elif action == "done":
-        o["status"] = "completed"
-
-    bot.edit_message_text("✅ تم", call.message.chat.id, call.message.message_id)
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
 
 
 if __name__ == "__main__":
-    from threading import Thread
-    Thread(target=bot.infinity_polling).start()
-    app.run(host="0.0.0.0", port=5000)
+    with app.app_context():
+        db.create_all()
+    app.run(host="0.0.0.0", port=10000)
