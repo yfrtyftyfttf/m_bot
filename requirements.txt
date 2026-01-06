@@ -3,3 +3,4 @@ gunicorn
 flask_cors
 pyTelegramBotAPI
 flask_sqlalchemy
+flask_login
