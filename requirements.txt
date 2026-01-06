@@ -2,3 +2,4 @@ flask
 gunicorn
 flask_cors
 pyTelegramBotAPI
+flask_sqlalchemy
