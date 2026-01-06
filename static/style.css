@@ -1,1 +1,20 @@
+body {
+    background: linear-gradient(120deg,#0f2027,#203a43,#2c5364);
+    font-family: Arial;
+    color: white;
+    text-align: center;
+}
 
+.card {
+    background: rgba(0,0,0,0.6);
+    width: 350px;
+    margin: 80px auto;
+    padding: 30px;
+    border-radius: 15px;
+}
+
+a {
+    color: #00e6ff;
+    text-decoration: none;
+    font-size: 18px;
+}
