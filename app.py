@@ -200,4 +200,8 @@ def actions(call):
 if __name__ == "__main__":
     from threading import Thread
     Thread(target=bot.infinity_polling).start()
-    app.run(host="0.0.0.0", port=5000)
+    import os
+
+port = int(os.environ.get("PORT", 10000))
+app.run(host="0.0.0.0", port=port)
+
