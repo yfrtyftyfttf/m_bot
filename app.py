@@ -1,205 +1,318 @@
-from flask import Flask, request, jsonify, render_template, redirect, session
-from flask_cors import CORS
-import telebot
-from telebot import types
-import uuid
-
-# ================== إعدادات ==================
-TOKEN = "7465926974:AAHzPv067I1ser4kExbRt5Hzj9R3Ma5Xjik"
-ADMIN_ID = "6695916631"
-ADMIN_PIN = "8888"
-
-PRICE_FOLLOWERS = 3.0   # لكل 1000
-PRICE_LIKES = 1.0       # لكل 1000
-
-bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
-app.secret_key = "SECRET_KEY_123"
-CORS(app)
-
-# ================== قواعد بيانات مؤقتة ==================
-users = {}
-orders = {}
-admin_unlocked = False
-
-# ================== دوال مساعدة ==================
-def calc_price(service, qty):
-    if service == "followers":
-        return (qty / 1000) * PRICE_FOLLOWERS
-    if service == "likes":
-        return (qty / 1000) * PRICE_LIKES
-    return 0
-
-# ================== الموقع ==================
-@app.route("/", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        u = request.form["username"]
-        p = request.form["password"]
-
-        for uid, user in users.items():
-            if user["username"] == u and user["password"] == p:
-                session["uid"] = uid
-                return redirect("/dashboard")
-
-        uid = str(uuid.uuid4())[:8]
-        users[uid] = {
-            "username": u,
-            "password": p,
-            "balance": 0.0,
-            "telegram_id": None,
-            "orders": []
-        }
-        session["uid"] = uid
-        return redirect("/dashboard")
-
-    return render_template("login.html")
-
-
-@app.route("/dashboard")
-def dashboard():
-    if "uid" not in session:
-        return redirect("/")
-    u = users[session["uid"]]
-    return render_template("dashboard.html", balance=u["balance"])
-
-
-@app.route("/services", methods=["GET", "POST"])
-def services():
-    if "uid" not in session:
-        return redirect("/")
-    if request.method == "POST":
-        service = request.form["service"]
-        qty = int(request.form["qty"])
-        uid = session["uid"]
-
-        cost = calc_price(service, qty)
-        if users[uid]["balance"] < cost:
-            return "رصيد غير كافي"
-
-        users[uid]["balance"] -= cost
-        oid = str(uuid.uuid4())[:8]
-
-        orders[oid] = {
-            "user": uid,
-            "service": service,
-            "qty": qty,
-            "cost": cost,
-            "status": "pending"
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMM Luxury Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00d2ff;
+            --secondary: #3a7bd5;
+            --bg-dark: #0f0c29;
+            --glass: rgba(255, 255, 255, 0.1);
+            --accent: #ff0055;
         }
 
-        users[uid]["orders"].append(oid)
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to right, #24243e, #302b63, #0f0c29);
+            color: white;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
 
-        markup = types.InlineKeyboardMarkup()
-        markup.add(
-            types.InlineKeyboardButton("✅ تم التنفيذ", callback_data=f"done_{oid}"),
-            types.InlineKeyboardButton("❌ إلغاء + إعادة", callback_data=f"cancel_{oid}")
-        )
+        .dashboard {
+            width: 90%;
+            max-width: 450px;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border-radius: 30px;
+            padding: 25px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
 
-        bot.send_message(
-            ADMIN_ID,
-            f"🚀 طلب جديد\n"
-            f"🆔 {oid}\n"
-            f"👤 {uid}\n"
-            f"📦 {service}\n"
-            f"🔢 {qty}\n"
-            f"💵 {cost}$",
-            reply_markup=markup
-        )
+        /* لوحة الرصيد */
+        .balance-card {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .balance-card h3 { margin: 0; font-size: 16px; opacity: 0.9; }
+        .balance-card h1 { margin: 10px 0 0; font-size: 36px; letter-spacing: 1px; }
 
-        tg = users[uid]["telegram_id"]
-        if tg:
-            bot.send_message(tg, f"📦 تم إنشاء طلبك رقم {oid}")
+        /* الأيقونات الثلاث */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .action-item {
+            background: rgba(255,255,255,0.05);
+            padding: 15px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+            border: 1px solid transparent;
+        }
+        .action-item:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: var(--primary);
+            transform: translateY(-5px);
+        }
+        .action-item i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            display: block;
+            color: var(--primary);
+        }
+        .action-item span { font-size: 12px; font-weight: 500; }
 
-        return redirect("/orders")
+        /* النوافذ المنبثقة (Modals) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #1a1a2e;
+            padding: 25px;
+            border-radius: 20px;
+            width: 85%;
+            max-width: 350px;
+            position: relative;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid #333;
+            background: #0f0c29;
+            color: white;
+            box-sizing: border-box;
+        }
+        .btn-send {
+            background: var(--primary);
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px; left: 10px;
+            cursor: pointer;
+            color: #ff0055;
+        }
+    </style>
+</head>
+<body>
 
-    return render_template("services.html")
+    <div class="dashboard">
+        <div class="balance-card">
+            <h3>رصيدك الحالي</h3>
+            <h1>$<span id="userBalance">0.00</span></h1>
+        </div>
 
+        <div class="actions-grid">
+            <div class="action-item" onclick="openModal('rechargeModal')">
+                <i class="fas fa-wallet"></i>
+                <span>شحن الرصيد</span>
+            </div>
+            <div class="action-item" onclick="openModal('supportModal')">
+                <i class="fas fa-headset"></i>
+                <span>الدعم الفني</span>
+            </div>
+            <div class="action-item" onclick="openModal('historyModal')">
+                <i class="fas fa-list-check"></i>
+                <span>الطلبات</span>
+            </div>
+        </div>
 
-@app.route("/orders")
-def orders_page():
-    if "uid" not in session:
-        return redirect("/")
-    uid = session["uid"]
-    user_orders = []
-    for oid in users[uid]["orders"]:
-        o = orders[oid]
-        user_orders.append({
-            "id": oid,
-            "service": o["service"],
-            "qty": o["qty"],
-            "status": o["status"]
-        })
-    return render_template("orders.html", orders=user_orders)
+        <p style="font-size: 12px; color: #aaa;">نظام البرق لخدمات الرشق الحديثة</p>
+    </div>
 
+    <div id="rechargeModal" class="modal">
+        <div class="modal-content">
+            <i class="fas fa-times close-btn" onclick="closeModal('rechargeModal')"></i>
+            <h3>شحن آسيا سيل</h3>
+            <input type="number" id="chargeAmount" placeholder="المبلغ (دينار عراقي)">
+            <input type="text" id="transferCode" placeholder="رقم كارت الشحن او رقم التحويل">
+            <button class="btn-send" onclick="sendToBot('شحن رصيد')">إرسال للتأكيد</button>
+        </div>
+    </div>
 
-@app.route("/support", methods=["GET", "POST"])
-def support():
-    if "uid" not in session:
-        return redirect("/")
-    if request.method == "POST":
-        msg = request.form["message"]
-        uid = session["uid"]
-        bot.send_message(ADMIN_ID, f"🎧 دعم فني\n👤 {uid}\n📩 {msg}")
-        return "تم الإرسال"
-    return render_template("support.html")
+    <div id="supportModal" class="modal">
+        <div class="modal-content">
+            <i class="fas fa-times close-btn" onclick="closeModal('supportModal')"></i>
+            <h3>الدعم الفني</h3>
+            <input type="text" id="orderId" placeholder="رقم الطلب (اختياري)">
+            <textarea id="supportNote" placeholder="اكتب مشكلتك هنا..." rows="4"></textarea>
+            <button class="btn-send" onclick="sendToBot('دعم فني')">إرسال البلاغ</button>
+        </div>
+    </div>
 
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <i class="fas fa-times close-btn" onclick="closeModal('historyModal')"></i>
+            <h3>طلباتك السابقة</h3>
+            <div style="text-align: right; font-size: 14px; color: #ddd;">
+                <p>- متابعين (مكتمل)</p>
+                <p>- لايكات (قيد التنفيذ)</p>
+            </div>
+        </div>
+    </div>
 
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
+    <script>
+        // وظائف فتح وإغلاق النوافذ
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-# ================== ربط تلغرام ==================
-@bot.message_handler(commands=["start"])
-def start(msg):
-    bot.send_message(
-        msg.chat.id,
-        f"👋 أهلاً\n"
-        f"ارسل ID حسابك من الموقع للربط"
-    )
+        // وظيفة إرسال البيانات للبوت
+        function sendToBot(type) {
+            const token = "YOUR_BOT_TOKEN"; // ضع توكن بوتك هنا
+            const chat_id = "YOUR_CHAT_ID"; // ضع معرف حسابك هنا
 
-@bot.message_handler(func=lambda m: len(m.text) == 8)
-def link_tg(msg):
-    for uid in users:
-        if uid == msg.text:
-            users[uid]["telegram_id"] = msg.chat.id
-            bot.send_message(msg.chat.id, "✅ تم ربط الحساب")
-            return
+            let text = `🚨 بلاغ جديد من الموقع: ${type}\n`;
+            
+            if(type === 'شحن رصيد') {
+                const amount = document.getElementById('chargeAmount').value;
+                const code = document.getElementById('transferCode').value;
+                text += `المبلغ: ${amount}\nالرقم/الكود: ${code}`;
+            } else {
+                const id = document.getElementById('orderId').value;
+                const note = document.getElementById('supportNote').value;
+                text += `رقم الطلب: ${id}\nالملاحظة: ${note}`;
+            }
 
-# ================== لوحة الأدمن ==================
-@bot.message_handler(commands=["admin"])
-def admin(msg):
-    bot.send_message(msg.chat.id, "🔐 اكتب رمز الأدمن")
+            const url = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chat_id}&text=${encodeURIComponent(text)}`;
 
-@bot.message_handler(func=lambda m: m.text == ADMIN_PIN)
-def unlock(msg):
-    global admin_unlocked
-    if msg.chat.id == ADMIN_ID:
-        admin_unlocked = True
-        bot.send_message(msg.chat.id, "✅ تم فتح لوحة الأدمن")
+            fetch(url).then(res => {
+                if(res.ok) {
+                    alert("تم الإرسال بنجاح، انتظر رد الإدارة.");
+                    location.reload();
+                }
+            });
+        }
+    </script>
+    <div class="service-section" style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+    <h3 style="margin-top: 0; color: var(--primary);">طلب خدمة جديدة</h3>
+    
+    <select id="platform" onchange="updateServiceOptions()">
+        <option value="" disabled selected>اختر المنصة</option>
+        <option value="instagram">إنستغرام</option>
+        <option value="tiktok">تيك توك</option>
+        <option value="telegram">تليجرام</option>
+    </select>
 
-@bot.callback_query_handler(func=lambda c: True)
-def callbacks(call):
-    data = call.data.split("_")
-    oid = data[1]
+    <select id="serviceType" onchange="calculatePrice()">
+        <option value="" disabled selected>اختر نوع الخدمة</option>
+    </select>
 
-    if data[0] == "done":
-        orders[oid]["status"] = "completed"
-        uid = orders[oid]["user"]
-        tg = users[uid]["telegram_id"]
-        if tg:
-            bot.send_message(tg, f"🎉 طلبك {oid} اكتمل")
-        bot.edit_message_text("✅ تم التنفيذ", call.message.chat.id, call.message.message_id)
+    <input type="text" id="targetLink" placeholder="رابط الحساب أو المنشور">
 
-    if data[0] == "cancel":
-        uid = orders[oid]["user"]
-        users[uid]["balance"] += orders[oid]["cost"]
-        orders[oid]["status"] = "cancelled"
-        tg = users[uid]["telegram_id"]
-        if tg:
-            bot.send_message(tg, f"❌ تم إلغاء الطلب {oid} وإعادة الرصيد")
-        bot.edit_message_text("❌ تم الإلغاء", call.message.chat.id, call.message.message_id)
+    <input type="number" id="quantity" placeholder="الكمية (مثلاً: 1000)" oninput="calculatePrice()">
+
+    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; margin: 10px 0; border: 1px dashed var(--primary);">
+        <span>السعر الإجمالي: </span>
+        <span id="totalPrice" style="font-weight: bold; color: #00ff88;">0.00</span>
+        <span style="color: #00ff88;">$</span>
+    </div>
+
+    <button class="btn-send" style="background: linear-gradient(to right, #00d2ff, #3a7bd5);" onclick="sendOrderToBot()">تأكيد طلب الرشق</button>
+</div>
+
+<script>
+    // أسعار الخدمات لكل 1000
+    const rates = {
+        followers: 3.00,  // 1000 متابع بـ 3$
+        likes: 1.00,      // 1000 لايك بـ 1$
+        views: 0.10       // 1000 مشاهدة بـ 0.10$
+    };
+
+    // تحديث أنواع الخدمات بناءً على المنصة
+    function updateServiceOptions() {
+        const platform = document.getElementById('platform').value;
+        const serviceSelect = document.getElementById('serviceType');
+        serviceSelect.innerHTML = '<option value="" disabled selected>اختر نوع الخدمة</option>';
+
+        if (platform === 'instagram' || platform === 'tiktok') {
+            serviceSelect.innerHTML += '<option value="followers">متابعين (3$ لكل 1000)</option>';
+            serviceSelect.innerHTML += '<option value="likes">لايكات (1$ لكل 1000)</option>';
+            serviceSelect.innerHTML += '<option value="views">مشاهدات (0.10$ لكل 1000)</option>';
+        } else if (platform === 'telegram') {
+            serviceSelect.innerHTML += '<option value="followers">متابعين قنوات (3$ لكل 1000)</option>';
+            serviceSelect.innerHTML += '<option value="views">مشاهدات (0.10$ لكل 1000)</option>';
+            // لا يوجد لايكات تليجرام كما طلبت
+        }
+        calculatePrice();
+    }
+
+    // حساب السعر تلقائياً
+    function calculatePrice() {
+        const service = document.getElementById('serviceType').value;
+        const qty = document.getElementById('quantity').value;
+        const priceDisplay = document.getElementById('totalPrice');
+
+        if (service && qty > 0) {
+            const ratePerUnit = rates[service] / 1000;
+            const total = (qty * ratePerUnit).toFixed(2);
+            priceDisplay.innerText = total;
+        } else {
+            priceDisplay.innerText = "0.00";
+        }
+    }
+
+    // إرسال طلب الرشق للبوت
+    function sendOrderToBot() {
+        const platform = document.getElementById('platform').value;
+        const service = document.getElementById('serviceType').value;
+        const link = document.getElementById('targetLink').value;
+        const qty = document.getElementById('quantity').value;
+        const price = document.getElementById('totalPrice').innerText;
+
+        if (!platform || !service || !link || !qty) {
+            alert("يرجى إكمال جميع بيانات الطلب");
+            return;
+        }
+
+        const token = "YOUR_BOT_TOKEN"; 
+        const chat_id = "YOUR_CHAT_ID";
+
+        const text = `🛒 طلب رشق جديد:\n` +
+                     `🌐 المنصة: ${platform}\n` +
+                     `📌 الخدمة: ${service}\n` +
+                     `🔗 الرابط: ${link}\n` +
+                     `🔢 الكمية: ${qty}\n` +
+                     `💰 السعر: ${price}$`;
+
+        const url = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chat_id}&text=${encodeURIComponent(text)}`;
+
+        fetch(url).then(res => {
+            if(res.ok) {
+                alert("تم إرسال طلبك بنجاح جاري المعالجة...");
+            }
+        });
+    }
+</script>
+</body>
+</html>
 
 # ================== تشغيل ==================
 if __name__ == "__main__":
