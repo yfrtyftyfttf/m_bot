@@ -1,0 +1,4 @@
+<h2>طلباتي</h2>
+{% for o in orders %}
+<p>#{{ o.id }} | {{ o.service }} | {{ o.qty }} | {{ o.status }}</p>
+{% endfor %}
