@@ -1,23 +1,179 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
-<link rel="stylesheet" href="/static/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة التحكم</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+*{
+    box-sizing:border-box;
+    font-family: "Tajawal", Arial;
+}
+body{
+    margin:0;
+    background: linear-gradient(135deg,#1b0036,#2c0052);
+    color:#000;
+}
+.container{
+    max-width:420px;
+    margin:auto;
+    padding:15px;
+}
+.card{
+    background:#fff;
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:15px;
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
+}
+.stat{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+}
+.stat i{
+    font-size:28px;
+    color:#aaa;
+}
+.stat .value{
+    font-size:20px;
+    font-weight:bold;
+}
+.stat .label{
+    font-size:14px;
+    color:#666;
+}
+.actions{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+}
+.action{
+    flex:1;
+    background:#fff;
+    border-radius:14px;
+    padding:12px;
+    text-align:center;
+    box-shadow:0 5px 15px rgba(0,0,0,.12);
+}
+.action i{
+    font-size:22px;
+    color:#f5a300;
+    margin-bottom:5px;
+}
+.section-title{
+    font-weight:bold;
+    margin:10px 0;
+    border-bottom:3px solid #f5a300;
+    display:inline-block;
+    padding-bottom:4px;
+}
+select,input{
+    width:100%;
+    padding:14px;
+    border-radius:12px;
+    border:1px solid #ddd;
+    font-size:15px;
+    margin-bottom:12px;
+}
+button{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:14px;
+    background:#f5a300;
+    color:#fff;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+.telegram{
+    position:fixed;
+    bottom:20px;
+    left:20px;
+    background:#1da1f2;
+    width:55px;
+    height:55px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:26px;
+    box-shadow:0 10px 25px rgba(0,0,0,.3);
+}
+</style>
 </head>
+
 <body>
 
 <div class="container">
-<h2>لوحة التحكم</h2>
 
-<div class="card">💰 الرصيد: {{ balance }} $</div>
+    <!-- الطلبات -->
+    <div class="card stat">
+        <i class="fa-solid fa-chart-column"></i>
+        <div>
+            <div class="value">12628323</div>
+            <div class="label">طلبات مكتملة</div>
+        </div>
+    </div>
 
-<div class="nav">
-<a href="/services">الخدمات</a>
-<a href="/orders">طلباتي</a>
-<a href="/support">الدعم</a>
+    <!-- الرصيد -->
+    <div class="card stat">
+        <i class="fa-solid fa-dollar-sign" style="color:#f5a300"></i>
+        <div>
+            <div class="value">$0.01647</div>
+            <div class="label">رصيدك الحالي</div>
+        </div>
+    </div>
+
+    <!-- الأزرار -->
+    <div class="actions">
+        <div class="action">
+            <i class="fa-solid fa-clipboard-list"></i>
+            <div>سجل الطلبات</div>
+        </div>
+        <div class="action">
+            <i class="fa-solid fa-credit-card"></i>
+            <div>شحن الرصيد</div>
+        </div>
+        <div class="action">
+            <i class="fa-solid fa-headset"></i>
+            <div>الدعم الفني</div>
+        </div>
+    </div>
+
+    <!-- طلب جديد -->
+    <div class="card">
+        <div class="section-title">طلب جديد</div>
+
+        <label>الفئة</label>
+        <select>
+            <option>انستقرام متابعين تحديث الجديد</option>
+        </select>
+
+        <label>الخدمة</label>
+        <select>
+            <option>متابعين انستقرام – جودة عالية (15693)</option>
+        </select>
+
+        <label>الرابط</label>
+        <input type="text" placeholder="https://instagram.com/...">
+
+        <label>الكمية</label>
+        <input type="number" placeholder="مثال: 1000">
+
+        <button>إرسال الطلب</button>
+    </div>
+
 </div>
 
-<a href="/logout"><button>تسجيل خروج</button></a>
-</div>
+<a class="telegram" href="#">
+    <i class="fa-brands fa-telegram"></i>
+</a>
 
 </body>
 </html>
