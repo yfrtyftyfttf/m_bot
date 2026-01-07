@@ -1,20 +1,72 @@
+* {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
 body {
-    background: linear-gradient(120deg,#0f2027,#203a43,#2c5364);
-    font-family: Arial;
-    color: white;
+    margin: 0;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: #fff;
+    min-height: 100vh;
+}
+
+.container {
+    width: 90%;
+    max-width: 500px;
+    margin: auto;
+    margin-top: 80px;
+    background: rgba(0,0,0,0.6);
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 0 25px rgba(0,0,0,0.6);
+}
+
+h1, h2 {
     text-align: center;
+    margin-bottom: 25px;
+}
+
+input, select {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    border: none;
+    font-size: 16px;
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    border: none;
+    border-radius: 10px;
+    background: #00c6ff;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #00ffcc;
+}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.nav a {
+    color: #00c6ff;
+    text-decoration: none;
+    font-weight: bold;
 }
 
 .card {
-    background: rgba(0,0,0,0.6);
-    width: 350px;
-    margin: 80px auto;
-    padding: 30px;
-    border-radius: 15px;
-}
-
-a {
-    color: #00e6ff;
-    text-decoration: none;
-    font-size: 18px;
+    background: rgba(255,255,255,0.08);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
 }
