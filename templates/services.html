@@ -1,9 +1,23 @@
-<form method="post" action="/create_order">
-  <select name="service">
-    <option value="Followers">👥 متابعين</option>
-    <option value="Likes">❤️ لايكات</option>
-  </select>
-  <input name="qty" placeholder="الكمية">
-  <input name="link" placeholder="الرابط">
-  <button>طلب</button>
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+<h2>طلب خدمة</h2>
+
+<form action="/order" method="post">
+<select name="service">
+<option value="followers">👥 متابعين – 3$ لكل 1000</option>
+<option value="likes">❤️ لايكات – 1$ لكل 1000</option>
+</select>
+
+<input name="qty" placeholder="الكمية" required>
+<button>تنفيذ الطلب</button>
 </form>
+
+</div>
+</body>
+</html>
