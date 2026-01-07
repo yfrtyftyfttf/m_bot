@@ -123,11 +123,10 @@ def orders():
     return render_template("orders.html", orders=user_orders)
 
 
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for("login"))
+@app.route("/login")
+def login():
+    return render_template("index.html")
+
 
 
 if __name__ == "__main__":
