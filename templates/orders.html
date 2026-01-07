@@ -1,4 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
 <h2>طلباتي</h2>
+
 {% for o in orders %}
-<p>#{{ o.id }} | {{ o.service }} | {{ o.qty }} | {{ o.status }}</p>
+<div class="card">
+رقم الطلب: {{ o.id }}<br>
+الخدمة: {{ o.service }}<br>
+الكمية: {{ o.qty }}<br>
+الحالة: {{ o.status }}
+</div>
 {% endfor %}
+
+</div>
+</body>
+</html>
