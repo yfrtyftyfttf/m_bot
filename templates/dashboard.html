@@ -1,6 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
 <h2>لوحة التحكم</h2>
-<p>رصيدك: {{ balance }}$</p>
+
+<div class="card">💰 الرصيد: {{ balance }} $</div>
+
+<div class="nav">
 <a href="/services">الخدمات</a>
 <a href="/orders">طلباتي</a>
 <a href="/support">الدعم</a>
-<a href="/logout">خروج</a>
+</div>
+
+<a href="/logout"><button>تسجيل خروج</button></a>
+</div>
+
+</body>
+</html>
